@@ -1,0 +1,34 @@
+[
+  {
+    "topics": [
+      "Космология"
+    ],
+    "title": "Орбита спутника",
+    "path": "cosmology/satellite-orbit",
+    "interactive": true,
+    "gifs": [],
+    "preview": null
+  },
+  {
+    "topics": [
+      "Примеры"
+    ],
+    "title": "Синусоида (пример)",
+    "path": "examples/sine-wave",
+    "interactive": true,
+    "gifs": [],
+    "preview": null
+  },
+  {
+    "topics": [
+      "Магнитное взаимодействие"
+    ],
+    "title": "Цепная передача взаимодействия в сетке магнитов",
+    "path": "magnetism/magnet-grid-chain-reaction",
+    "interactive": false,
+    "gifs": [
+      "magnet-grid-chain-reaction.gif"
+    ],
+    "preview": "preview.png"
+  }
+]

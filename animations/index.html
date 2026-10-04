@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Каталог анимаций</title>
+  <link rel="stylesheet" href="shared/style.css">
+</head>
+<body>
+<main>
+  <p class="breadcrumbs"><a href="../index.html">Главная</a> / Анимации</p>
+  <h1>Каталог анимаций</h1>
+  <p class="muted">Анимации сгруппированы по темам и подтемам; тема раскрывается по нажатию. «Интерактив» открывается в браузере, «gif» — пассивная версия.</p>
+  <div id="catalog"><p class="muted">Загрузка каталога…</p></div>
+</main>
+<script src="shared/site.js"></script>
+<script>
+// Каталог читается из catalog.json; файл пересобирается скриптом build-catalog.py.
+(function () {
+  var root = document.getElementById('catalog');
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function card(item) {
+    var link = el('a', 'card');
+    link.href = item.interactive ? item.path + '/index.html' : item.path + '/' + item.gifs[0];
+
+    if (item.preview) {
+      var preview = el('div', 'card-preview');
+      var img = el('img');
+      // Картинка подгружается только при раскрытии темы (см. loadImages).
+      img.dataset.src = item.path + '/' + item.preview;
+      img.alt = '';
+      img.loading = 'lazy';
+      preview.appendChild(img);
+      link.appendChild(preview);
+    }
+
+    var body = el('div', 'card-body');
+    body.appendChild(el('p', 'card-title', item.title));
+    var badges = el('p', 'card-text');
+    if (item.interactive) badges.appendChild(el('span', 'badge badge-interactive', 'интерактив'));
+    if (item.gifs.length) badges.appendChild(el('span', 'badge badge-gif', 'gif'));
+    body.appendChild(badges);
+    link.appendChild(body);
+
+    var li = el('li');
+    li.appendChild(link);
+    return li;
+  }
+
+  function render(items) {
+    root.textContent = '';
+    if (!items.length) {
+      root.appendChild(el('p', 'muted', 'Анимаций пока нет.'));
+      return;
+    }
+    var toggle = el('button', 'toggle-all', 'Развернуть все');
+    toggle.type = 'button';
+    root.appendChild(toggle);
+
+    // Каждая тема — сворачиваемый блок; по умолчанию свёрнут.
+    var groups = [];
+    var list;
+    var count;
+    var topic = null;
+    items.forEach(function (item) {
+      // Темы могут быть вложенными: «Тема / Подтема».
+      var heading = item.topics.join(' / ');
+      if (heading !== topic) {
+        topic = heading;
+        var group = el('details', 'topic');
+        var summary = el('summary');
+        summary.appendChild(el('span', 'topic-title', topic));
+        count = el('span', 'topic-count', '0');
+        summary.appendChild(count);
+        group.appendChild(summary);
+        list = el('ul', 'cards');
+        group.appendChild(list);
+        group.addEventListener('toggle', function () {
+          if (group.open) loadImages(group);
+          updateToggle();
+        });
+        groups.push(group);
+        root.appendChild(group);
+      }
+      list.appendChild(card(item));
+      count.textContent = Number(count.textContent) + 1;
+    });
+
+    function allOpen() {
+      return groups.every(function (group) { return group.open; });
+    }
+
+    function updateToggle() {
+      toggle.textContent = allOpen() ? 'Свернуть все' : 'Развернуть все';
+    }
+
+    toggle.addEventListener('click', function () {
+      var open = !allOpen();
+      groups.forEach(function (group) { group.open = open; });
+    });
+  }
+
+  function loadImages(group) {
+    group.querySelectorAll('img[data-src]').forEach(function (img) {
+      img.src = img.dataset.src;
+      img.removeAttribute('data-src');
+    });
+  }
+
+  fetch('catalog.json')
+    .then(function (response) {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return response.json();
+    })
+    .then(render)
+    .catch(function (error) {
+      root.textContent = '';
+      root.appendChild(el('p', 'notice',
+        'Не удалось загрузить catalog.json (' + error.message + '). ' +
+        'Страницу нужно открывать через веб-сервер, а не как локальный файл.'));
+    });
+})();
+</script>
+</body>
+</html>

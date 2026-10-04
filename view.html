@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Просмотр документа</title>
+  <link rel="stylesheet" href="animations/shared/style.css">
+  <link rel="stylesheet" href="animations/shared/vendor/katex/katex.min.css">
+</head>
+<body>
+<main>
+  <p class="breadcrumbs" id="breadcrumbs"><a href="index.html">Главная</a></p>
+  <article class="doc" id="doc"><p class="muted">Загрузка…</p></article>
+</main>
+<script src="animations/shared/site.js"></script>
+<script src="animations/shared/vendor/marked/marked.min.js"></script>
+<script src="animations/shared/vendor/katex/katex.min.js"></script>
+<script>
+// Просмотрщик документов сайта: view.html?file=<путь от корня>.
+// Показывает только документы из списка PUBLIC; ссылки на остальные md-файлы
+// (рабочие материалы) ведут в репозиторий на GitHub.
+// Markdown разбирает marked, формулы LaTeX ($...$, $$...$$) отрисовывает KaTeX.
+(function () {
+  var doc = document.getElementById('doc');
+  var rootURL = new URL('.', location.href);
+  var PUBLIC = [/^author\.md$/, /^CONTRIBUTING\.md$/, /^presentations\/.+\.md$/, /^sources\/monograph\/README\.md$/];
+  var file = new URLSearchParams(location.search).get('file') || 'author.md';
+  var fileURL = new URL(file, rootURL);
+
+  function fail(message) {
+    doc.textContent = '';
+    var p = document.createElement('p');
+    p.className = 'notice';
+    p.textContent = message;
+    doc.appendChild(p);
+  }
+
+  function inside(url) {
+    return url.origin === location.origin && url.pathname.indexOf(rootURL.pathname) === 0;
+  }
+
+  // Путь от корня сайта, в читаемом виде.
+  function relative(url) {
+    return decodeURIComponent(url.pathname.slice(rootURL.pathname.length));
+  }
+
+  function isPublic(path) {
+    return PUBLIC.some(function (rule) { return rule.test(path); });
+  }
+
+  function repoLink(path, hash) {
+    return window.siteRepo + '/blob/main/' + encodeURI(path) + (hash || '');
+  }
+
+  function viewerLink(path, hash) {
+    return 'view.html?file=' + encodeURIComponent(path).replace(/%2F/g, '/') + (hash || '');
+  }
+
+  // Формулы вынимаются до разбора Markdown, чтобы он не испортил «_» и «\».
+  function protectMath(source, formulas) {
+    function hold(tex, display) {
+      formulas.push({ tex: tex, display: display });
+      return 'KATEXPH' + (formulas.length - 1) + 'END';
+    }
+    return source.split(/(```[\s\S]*?```|`[^`\n]*`)/g).map(function (part, index) {
+      if (index % 2) return part; // код не трогаем
+      return part
+        .replace(/\$\$([\s\S]+?)\$\$/g, function (m, tex) { return hold(tex, true); })
+        .replace(/\\\[([\s\S]+?)\\\]/g, function (m, tex) { return hold(tex, true); })
+        .replace(/\\\((.+?)\\\)/g, function (m, tex) { return hold(tex, false); })
+        .replace(/\$([^\s$](?:[^$\n]*[^\s$])?)\$/g, function (m, tex) { return hold(tex, false); });
+    }).join('');
+  }
+
+  function restoreMath(html, formulas) {
+    return html.replace(/KATEXPH(\d+)END/g, function (m, index) {
+      var formula = formulas[Number(index)];
+      return katex.renderToString(formula.tex, { displayMode: formula.display, throwOnError: false });
+    });
+  }
+
+  function splitFrontMatter(source) {
+    var match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(source);
+    return match ? { meta: match[1], body: source.slice(match[0].length) } : { meta: null, body: source };
+  }
+
+  // Относительные ссылки и картинки пересчитываются от папки документа.
+  function fixLinks() {
+    doc.querySelectorAll('a[href]').forEach(function (a) {
+      var raw = a.getAttribute('href');
+      if (raw.charAt(0) === '#') return;
+      if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) { a.rel = 'noopener'; return; }
+      var url = new URL(raw, fileURL);
+      if (!inside(url)) return;
+      var path = relative(url);
+      if (path === '' || /\/$/.test(path)) path += 'README.md'; // ссылка на папку
+      if (isPublic(path)) {
+        a.setAttribute('href', viewerLink(path, url.hash));
+      } else if (/\.(md|txt)$/i.test(path)) {
+        a.setAttribute('href', repoLink(path, url.hash)); // рабочий файл — в репозитории
+        a.rel = 'noopener';
+      } else {
+        a.setAttribute('href', path + url.search + url.hash);
+      }
+    });
+    doc.querySelectorAll('img[src]').forEach(function (img) {
+      var raw = img.getAttribute('src');
+      if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return;
+      var url = new URL(raw, fileURL);
+      if (inside(url)) img.setAttribute('src', relative(url));
+    });
+  }
+
+  function breadcrumbs(path) {
+    var holder = document.getElementById('breadcrumbs');
+    var parts = path.split('/');
+    var folder = '';
+    parts.forEach(function (part, index) {
+      holder.appendChild(document.createTextNode(' / '));
+      if (index < parts.length - 1) {
+        folder += part + '/';
+        var crumb = document.createElement('span');
+        crumb.textContent = part;
+        holder.appendChild(crumb);
+        linkIfExists(crumb, folder + 'README.md');
+      } else {
+        holder.appendChild(document.createTextNode(part));
+      }
+    });
+  }
+
+  // Папка в «хлебных крошках» становится ссылкой, если в ней есть README.md.
+  function linkIfExists(crumb, readme) {
+    if (!isPublic(readme)) return;
+    fetch(new URL(readme, rootURL), { method: 'HEAD' }).then(function (response) {
+      if (!response.ok) return;
+      var a = document.createElement('a');
+      a.href = viewerLink(readme);
+      a.textContent = crumb.textContent;
+      crumb.replaceWith(a);
+    }).catch(function () {});
+  }
+
+  function render(source, path) {
+    var parts = splitFrontMatter(source);
+    var formulas = [];
+    var html = marked.parse(protectMath(parts.body, formulas), { gfm: true });
+    doc.innerHTML = restoreMath(html, formulas);
+
+    if (parts.meta) {
+      var details = document.createElement('details');
+      details.className = 'meta';
+      var summary = document.createElement('summary');
+      summary.textContent = 'Сведения об источнике и обработке';
+      var pre = document.createElement('pre');
+      pre.textContent = parts.meta;
+      details.appendChild(summary);
+      details.appendChild(pre);
+      doc.insertBefore(details, doc.firstChild);
+    }
+
+    fixLinks();
+    var heading = doc.querySelector('h1');
+    document.title = heading ? heading.textContent : path;
+  }
+
+  if (!inside(fileURL) || !isPublic(relative(fileURL))) {
+    fail('Этот документ на сайте не показывается. Рабочие материалы лежат в репозитории на GitHub.');
+    return;
+  }
+
+  var path = relative(fileURL);
+  breadcrumbs(path);
+
+  fetch(fileURL)
+    .then(function (response) {
+      if (!response.ok) throw new Error(response.status === 404 ? 'файл не найден' : 'HTTP ' + response.status);
+      return response.text();
+    })
+    .then(function (source) { render(source, path); })
+    .catch(function (error) {
+      fail('Не удалось открыть «' + path + '»: ' + error.message + '.');
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Материалы теории В. Г. Катющика</title>
+  <meta name="description" content="Монография В. Г. Катющика, анимации явлений и презентации по теории.">
+  <link rel="stylesheet" href="animations/shared/style.css">
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div>
+      <h1>Материалы теории В.&nbsp;Г.&nbsp;Катющика</h1>
+      <p class="hero-lead">Монография автора, анимации явлений и презентации, подготовленные сообществом единомышленников.</p>
+      <div class="actions">
+        <a class="button button-primary" href="animations/index.html">Открыть каталог анимаций</a>
+        <a class="button" href="sources/monograph/gravitatsionnoe-vzaimodeystvie-osnovy-kosmologii.pdf">Читать монографию (PDF)</a>
+      </div>
+    </div>
+    <div class="hero-figure" aria-hidden="true">
+      <!-- Декоративная схема орбит; к положениям теории не относится. -->
+      <svg class="orbits" viewBox="-200 -200 400 400" role="presentation">
+        <circle class="ring" r="196"/>
+        <circle class="ticks" r="188"/>
+        <line class="axis" x1="-196" y1="0" x2="196" y2="0"/>
+        <line class="axis" x1="0" y1="-196" x2="0" y2="196"/>
+        <circle class="path" r="62"/>
+        <circle class="path" r="108"/>
+        <circle class="path" r="152"/>
+        <ellipse class="ellipse" rx="172" ry="92" transform="rotate(-24)"/>
+        <circle class="glow" r="34"/>
+        <circle class="sun" r="12"/>
+        <g class="turn turn-a"><line class="radius" x1="12" y1="0" x2="62" y2="0"/><circle class="body" cx="62" r="4"/></g>
+        <g class="turn turn-b"><g transform="rotate(140)"><circle class="body" cx="108" r="6"/></g></g>
+        <g class="turn turn-c"><g transform="rotate(250)"><circle class="body" cx="152" r="3"/></g></g>
+      </svg>
+    </div>
+  </section>
+
+  <blockquote class="epigraph">
+    <p>«Нижеследующие материалы являются научной констатацией. (Констатация — строгое научное построение, не опирающееся ни в одном из своих разделов на какие либо гипотезы.)»</p>
+    <footer>В. Г. Катющик, «Гравитационное взаимодействие, основы космологии», стр. 2</footer>
+  </blockquote>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Анимации</h2>
+      <a href="animations/index.html">Весь каталог</a>
+    </div>
+    <ul class="cards" id="featured">
+      <li><a class="card" href="animations/index.html"><div class="card-body">
+        <p class="card-title">Каталог анимаций</p>
+        <p class="card-text">Интерактивные и gif-иллюстрации явлений по темам.</p>
+      </div></a></li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Материалы</h2></div>
+    <ul class="index-list">
+      <li><a href="view.html?file=sources/monograph/README.md">
+        <span class="index-title">Монография</span>
+        <span class="index-note">Труды автора в оригинале: «Гравитационное взаимодействие, основы космологии»</span>
+      </a></li>
+      <li><a href="view.html?file=presentations/README.md">
+        <span class="index-title">Презентации</span>
+        <span class="index-note">Презентации по теории</span>
+      </a></li>
+      <li><a href="view.html?file=CONTRIBUTING.md">
+        <span class="index-title">Как участвовать</span>
+        <span class="index-note">Добавить анимацию, презентацию или расшифровку видео</span>
+      </a></li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Об авторе</h2></div>
+    <div class="author">
+      <img src="author.jpg" alt="Виктор Григорьевич Катющик" loading="lazy">
+      <div>
+        <h3>Виктор Григорьевич Катющик</h3>
+        <p>Физик-исследователь и художник, автор теории гравитации и монографии «Гравитационное взаимодействие, основы космологии».</p>
+        <a href="view.html?file=author.md">Читать биографию</a>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="animations/shared/site.js"></script>
+<script>
+// Блок «Анимации»: до трёх явлений из каталога (сначала с картинкой).
+(function () {
+  var list = document.getElementById('featured');
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function card(item) {
+    var base = 'animations/' + item.path + '/';
+    var a = el('a', 'card');
+    a.href = base + (item.interactive ? 'index.html' : item.gifs[0]);
+    if (item.preview) {
+      var preview = el('div', 'card-preview');
+      var img = el('img');
+      img.src = base + item.preview;
+      img.alt = '';
+      img.loading = 'lazy';
+      preview.appendChild(img);
+      a.appendChild(preview);
+    }
+    var body = el('div', 'card-body');
+    body.appendChild(el('p', 'card-title', item.title));
+    body.appendChild(el('p', 'card-text', item.topics.join(' / ')));
+    a.appendChild(body);
+    var li = el('li');
+    li.appendChild(a);
+    return li;
+  }
+
+  fetch('animations/catalog.json')
+    .then(function (response) { return response.ok ? response.json() : []; })
+    .then(function (items) {
+      items = items.filter(function (item) { return item.path.indexOf('examples/') !== 0; });
+      if (!items.length) return;
+      items.sort(function (a, b) { return Boolean(b.preview) - Boolean(a.preview); });
+      list.textContent = '';
+      items.slice(0, 3).forEach(function (item) { list.appendChild(card(item)); });
+    })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>

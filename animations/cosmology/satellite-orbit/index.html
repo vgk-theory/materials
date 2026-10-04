@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Орбита спутника</title>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Система отсчёта Земля–спутник</h1>
+  </header>
+
+  <canvas id="scene" width="900" height="480"></canvas>
+
+  <div class="plots">
+    <canvas id="pR" width="560" height="116"></canvas>
+    <canvas id="pV" width="560" height="116"></canvas>
+    <canvas id="pA" width="560" height="116"></canvas>
+  </div>
+
+  <div class="bar">
+    <div class="tl">
+      <div class="bar-label">Оборот <span class="val mono" id="tlPos">0.00</span></div>
+      <div class="tl-row">
+        <button id="play" class="play">Пауза</button>
+        <div class="tl-wrap">
+          <input id="scrub" type="range" min="0" max="1000" step="1" value="0">
+          <div class="tl-marks" id="tlMarks"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ctl">
+      <div class="bar-label">Темп <span class="val mono" id="spVal">1.0×</span></div>
+      <input id="sp" type="range" min="0.2" max="3" step="0.1" value="1">
+    </div>
+    <div class="ctl">
+      <div class="bar-label">Эксцентриситет <span class="val mono" id="eVal">0.50</span></div>
+      <input id="e" type="range" min="0" max="0.85" step="0.01" value="0.5">
+    </div>
+  </div>
+
+  <footer class="foot">Кеплеровское движение: <span class="mono">M = E − e·sin E</span> | Пунктир — инерциальная траектория | <span class="mono">r₀</span> — радиус равновесия</footer>
+</div>
+
+<style>
+  :root{
+    --bg:#fff;--panel:#fafafa;--elevated:#f4f4f5;
+    --border:#d9d9dd;--ink:#171717;--dim:#93939f;--muted:#757575;
+    --accent:#1863dc;
+  }
+  #app{
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);
+    background:var(--bg);padding:24px 20px;max-width:960px;margin:0 auto}
+  h1{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:26px;font-weight:500;
+    margin:0 0 22px;letter-spacing:-0.02em;text-align:center;color:var(--ink)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:400}
+  .foot{font-size:11px;font-weight:400;color:var(--dim);line-height:1.6;margin-top:18px;text-align:center}
+
+  /* ---- Control bar ---- */
+  .bar{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:end;
+    background:var(--elevated);border:1px solid var(--border);
+    border-radius:12px;padding:14px 18px;margin-top:14px}
+  .bar>*{min-width:0}
+  .bar-label{font-size:11px;font-weight:600;color:var(--muted);
+    text-transform:uppercase;letter-spacing:0.05em;
+    display:flex;justify-content:space-between;margin-bottom:7px}
+  .bar-label .val{color:var(--ink);font-weight:500;text-transform:none;letter-spacing:0}
+  .ctl{display:flex;flex-direction:column;min-width:110px;flex:1 1 auto}
+  .tl{display:flex;flex-direction:column;flex:2 1 240px}
+  .tl-row{display:flex;align-items:center;gap:10px}
+
+  /* ---- Scrubber ---- */
+  .tl-wrap{position:relative;flex:1}
+  .tl-wrap input{width:100%}
+  .tl #scrub{height:4px;border-radius:2px;
+    background:linear-gradient(90deg,var(--accent) 0%,var(--accent) var(--prog,0%),#e5e7eb var(--prog,0%))}
+  .tl #scrub::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--ink);cursor:grab;border:2px solid var(--accent)}
+  .tl #scrub::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--ink);cursor:grab;border:2px solid var(--accent)}
+  .tl-marks{position:absolute;left:9px;right:9px;top:50%;bottom:0;pointer-events:none;z-index:0}
+  .tl-wrap input{position:relative;z-index:1}
+  .tl-mark{position:absolute;top:5px;width:2px;height:6px;background:var(--accent);border-radius:1px;transform:translateX(-50%)}
+  .tlabel{position:absolute;top:14px;font-size:10px;font-weight:600;color:var(--accent);white-space:nowrap;transform:translateX(-50%)}
+
+  /* ---- Range inputs ---- */
+  input[type=range]{-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,var(--accent),#e5e7eb);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--accent);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:none}
+
+  /* ---- Play button ---- */
+  .play{background:transparent;color:var(--ink);border:1px solid var(--border);
+    border-radius:12px;padding:9px 20px;font-weight:500;font-size:13px;cursor:pointer;
+    height:38px;white-space:nowrap;outline:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    transition:color .15s,border-color .15s,background .15s}
+  .play:hover{color:var(--accent);border-color:var(--accent)}
+  .play:focus-visible{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--accent)}
+  .play:active{background:var(--accent);color:#fff}
+  .play.paused{color:var(--dim)}
+  .play.paused:hover{color:var(--accent)}
+
+  /* ---- Canvases ---- */
+  canvas{display:block;width:100%;height:auto;background:var(--panel);
+    border:1px solid var(--border);border-radius:12px}
+  #scene{margin-bottom:10px}
+  .plots{display:flex;flex-direction:column;gap:8px}
+  .plots canvas{flex-shrink:0}
+
+  @media(max-width:700px){
+    #app{padding:14px}h1{font-size:20px}
+    .bar{gap:12px;padding:14px 12px;margin-top:12px}
+    .ctl{min-width:0;flex:1 1 100%}.tl{flex:1 1 100%}.tl-wrap{order:-1}
+    .bar-label{font-size:12px}.tlabel{font-size:11px}
+    input[type=range]{height:5px}
+    input[type=range]::-webkit-slider-thumb{width:18px;height:18px}
+    input[type=range]::-moz-range-thumb{width:18px;height:18px}
+    .tl #scrub{height:6px}
+    .tl #scrub::-webkit-slider-thumb{width:22px;height:22px}
+    .tl #scrub::-moz-range-thumb{width:22px;height:22px}
+  }
+</style>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id), TAU=Math.PI*2;
+  const mu=1, a=1;
+  let e=0.5, speed=1, playing=true, M=0;
+  const Tper=TAU*Math.sqrt(a*a*a/mu), n=TAU/Tper;
+  let scrubbing=false;
+
+  let DPR=1;
+  function setupHiDPI(){
+    DPR=window.devicePixelRatio||1;
+    document.querySelectorAll('canvas').forEach(c=>{
+      const r=c.getBoundingClientRect();
+      c._lw=r.width; c._lh=r.height;
+      c.width=r.width*DPR; c.height=r.height*DPR;
+      c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+    });
+  }
+  setupHiDPI();
+  window.addEventListener('resize',()=>{setupHiDPI();renderAt();});
+  window.addEventListener('orientationchange',()=>{setTimeout(()=>{setupHiDPI();renderAt();},100);});
+  requestAnimationFrame(() => { setupHiDPI(); renderAt(); requestAnimationFrame(frame); });
+
+  const HN=300;
+  function windowSeries(Mnow){
+    const out={r:[],v:[],a:[]};
+    for(let i=0;i<HN;i++){
+      const frac=(i-(HN-1))/HN;
+      const Mi=Mnow+frac*TAU;
+      const s=state(Mi);
+      out.r.push(s.r);out.v.push(s.vr);out.a.push(s.arad);
+    }
+    return out;
+  }
+
+  let _extE=null,_ext=null;
+  function orbitExtremes(){
+    if(_extE===e && _ext) return _ext;
+    let vrMax=0,aMax=0;
+    for(let i=0;i<360;i++){
+      const s=state(i/360*TAU);
+      if(Math.abs(s.vr)>vrMax)vrMax=Math.abs(s.vr);
+      if(Math.abs(s.arad)>aMax)aMax=Math.abs(s.arad);
+    }
+    _extE=e; _ext={vrMax,aMax};
+    return _ext;
+  }
+
+  $('e').oninput=ev=>{e=+ev.target.value;$('eVal').textContent=e.toFixed(2);updateScrubMarks();renderAt();};
+  $('sp').oninput=ev=>{speed=+ev.target.value;$('spVal').textContent=speed.toFixed(1)+'×';};
+  $('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Пауза':'Пуск';$('play').classList.toggle('paused',!playing);};
+
+  const scrub=$('scrub');
+  function syncScrubFromM(){
+    const frac=(((M%TAU)+TAU)%TAU)/TAU;
+    scrub.value=Math.round(frac*1000);
+    $('tlPos').textContent=frac.toFixed(2);
+    scrub.style.setProperty('--prog',(frac*100).toFixed(1)+'%');
+  }
+  scrub.addEventListener('input',()=>{
+    scrubbing=true;M=(+scrub.value/1000)*TAU;
+    $('tlPos').textContent=(+scrub.value/1000).toFixed(2);
+    scrub.style.setProperty('--prog',(+scrub.value/10).toFixed(1)+'%');
+    renderAt();
+  });
+  scrub.addEventListener('change',()=>{scrubbing=false;});
+
+  function updateScrubMarks(){
+    const m=$('tlMarks'); m.innerHTML='';
+    const E1=2*Math.atan(Math.sqrt((1-e)/(1+e)));
+    const M1=E1-e*Math.sin(E1);
+    const pos1=((M1%TAU+TAU)%TAU)/TAU*1000;
+    [{pos:0,l:'P'},{pos:pos1,l:'r₀'},{pos:500,l:'A'},{pos:1000-pos1,l:'r₀'}].forEach(({pos,l})=>{
+      const d=document.createElement('div');d.className='tl-mark';
+      d.style.left=(pos/10).toFixed(1)+'%';m.appendChild(d);
+      const t=document.createElement('div');t.className='tlabel';
+      t.style.left=(pos/10).toFixed(1)+'%';t.textContent=l;m.appendChild(t);
+    });
+  }
+  updateScrubMarks();
+
+  function solveE(M){M=((M%TAU)+TAU)%TAU;let E=e<0.8?M:Math.PI;
+    for(let k=0;k<60;k++){const f=E-e*Math.sin(E)-M,fp=1-e*Math.cos(E);const d=f/fp;E-=d;if(Math.abs(d)<1e-13)break;}return E;}
+
+  function state(M){
+    const E=solveE(M);
+    const r=a*(1-e*Math.cos(E));
+    const h=Math.sqrt(mu*a*(1-e*e));
+    const dEdt=n/(1-e*Math.cos(E));
+    const vr=a*e*Math.sin(E)*dEdt;
+    const arad=-mu/(r*r)+h*h/(r*r*r);
+    const nu=Math.atan2(Math.sqrt(1-e*e)*Math.sin(E),Math.cos(E)-e);
+    return {E,r,h,vr,arad,nu};
+  }
+  const rp=()=>a*(1-e), ra=()=>a*(1+e);
+
+  // ---- Scene colour constants ----
+  const CL_ORBIT='#d4d4d8', CL_TICK='#d9d9dd', CL_AXIS='#c5c5ca', CL_PERI='#f59e0b';
+  const CL_PERI_FONT='600 10px system-ui,sans-serif';
+  const CL_R0='#1863dc', CL_R0_FONT='600 9px ui-monospace,Menlo,Consolas,monospace';
+  const CL_EARTH='#1863dc', CL_EARTH_GLOW='rgba(24,99,220,0.25)', CL_EARTH_INNER='#1e40af';
+  const CL_EARTH_LABEL='#171717', CL_EARTH_FONT='600 10px system-ui,sans-serif';
+  const CL_MUTED='#93939f', CL_V0_FONT='600 10px ui-monospace,Menlo,Consolas,monospace';
+  const CL_V='#1863dc', CL_A='#10b981';
+  const CL_SAT='#171717', CL_SAT_GLOW='rgba(0,0,0,0.12)', CL_SAT_LABEL='#93939f';
+  const CL_SAT_FONT='600 10px system-ui,sans-serif';
+  const CL_PLOT_R='#f59e0b', CL_PLOT_V='#1863dc', CL_PLOT_A='#10b981';
+  const PLOT_LABEL_FONT='600 11px system-ui,sans-serif', PLOT_VAL='#757575';
+  const PLOT_VAL_FONT='500 11px ui-monospace,Menlo,Consolas,monospace', PLOT_ZERO='#d9d9dd';
+  const REF_FONT='600 10px ui-monospace,Menlo,Consolas,monospace';
+  const ARROW_FONT='600 13px system-ui,sans-serif';
+
+  function drawScene(s){
+    const c=$('scene'),ctx=c.getContext('2d'),W=c._lw,Hh=c._lh;
+    ctx.clearRect(0,0,W,Hh);
+    const earthX=W*0.30, axisY=Hh*0.5;
+    const sc=(W*0.60)/ra();
+    const satX=earthX+s.r*sc;
+
+    const bsemi=a*Math.sqrt(1-e*e);
+    ctx.save();
+    ctx.translate(earthX, axisY);
+    ctx.rotate(-s.nu);
+    const ep=t=>[(a*Math.cos(t)-a*e)*sc,-(bsemi*Math.sin(t))*sc];
+
+    ctx.strokeStyle=CL_ORBIT;ctx.lineWidth=1.3;ctx.setLineDash([8,6]);
+    ctx.beginPath();
+    for(let i=0;i<=160;i++){const t=i/160*TAU;i?ctx.lineTo(...ep(t)):ctx.moveTo(...ep(t));}
+    ctx.stroke();ctx.setLineDash([]);
+
+    [[rp(),1],[-ra(),-1]].forEach(([r])=>{
+      ctx.strokeStyle=CL_TICK;ctx.setLineDash([2,4]);ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(r*sc,-14);ctx.lineTo(r*sc,14);ctx.stroke();ctx.setLineDash([]);
+    });
+    ctx.restore();
+
+    ctx.strokeStyle=CL_AXIS;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(earthX,axisY);ctx.lineTo(earthX+ra()*sc+8,axisY);ctx.stroke();
+
+    const periX=earthX+rp()*sc*Math.cos(s.nu);
+    const periY=axisY-rp()*sc*Math.sin(s.nu);
+    const apoX=earthX-ra()*sc*Math.cos(s.nu);
+    const apoY=axisY+ra()*sc*Math.sin(s.nu);
+    ctx.fillStyle=CL_PERI;
+    ctx.beginPath();ctx.arc(periX,periY,4,0,TAU);ctx.fill();
+    ctx.beginPath();ctx.arc(apoX,apoY,4,0,TAU);ctx.fill();
+    ctx.font=CL_PERI_FONT;ctx.fillStyle=CL_PERI;
+    ctx.fillText('перигей',periX+8,periY-6);
+    ctx.fillText('апогей',apoX-42,apoY+17);
+
+    const r0=s.h*s.h/mu;
+    const r0X=earthX+r0*sc;
+    ctx.fillStyle=CL_R0;ctx.strokeStyle=CL_R0;
+    ctx.setLineDash([4,4]);ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.moveTo(r0X,axisY-22);ctx.lineTo(r0X,axisY+22);ctx.stroke();ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(r0X,axisY,4.5,0,TAU);ctx.fill();
+    ctx.font=CL_R0_FONT;ctx.fillStyle=CL_R0;
+    ctx.fillText('r₀  равновесие',r0X-36,axisY-26);
+
+    ctx.fillStyle=CL_EARTH;ctx.shadowColor=CL_EARTH_GLOW;ctx.shadowBlur=18;
+    ctx.beginPath();ctx.arc(earthX,axisY,13,0,TAU);ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle=CL_EARTH_INNER;ctx.beginPath();ctx.arc(earthX,axisY,13,0,TAU);ctx.fill();
+    ctx.fillStyle=CL_EARTH_LABEL;ctx.font=CL_EARTH_FONT;
+    ctx.fillText('Земля',earthX-16,axisY+30);
+
+    const ext=orbitExtremes();
+    const AMIN=16,ASPAN=58,ZERO=1e-4;
+    const arrowLen=(mag,maxv)=>AMIN+Math.sqrt(Math.min(mag/maxv,1))*ASPAN;
+
+    const vmag=Math.abs(s.vr),vdir=Math.sign(s.vr)||1;
+    if(ext.vrMax>ZERO&&vmag/ext.vrMax>0.012){
+      arrow(ctx,satX,axisY-24,satX+vdir*arrowLen(vmag,ext.vrMax),axisY-24,CL_V,'V');
+    }else{ctx.fillStyle=CL_MUTED;ctx.font=CL_V0_FONT;ctx.fillText('V≈0',satX-12,axisY-28);}
+
+    const amag=Math.abs(s.arad),adir=Math.sign(s.arad)||1;
+    if(ext.aMax>ZERO&&amag/ext.aMax>0.012){
+      arrow(ctx,satX,axisY+24,satX+adir*arrowLen(amag,ext.aMax),axisY+24,CL_A,'a');
+    }else{ctx.fillStyle=CL_MUTED;ctx.font=CL_V0_FONT;ctx.fillText('a≈0',satX-12,axisY+42);}
+
+    ctx.fillStyle=CL_SAT;ctx.shadowColor=CL_SAT_GLOW;ctx.shadowBlur=12;
+    ctx.beginPath();ctx.arc(satX,axisY,8,0,TAU);ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle=CL_SAT_LABEL;ctx.font=CL_SAT_FONT;
+    ctx.fillText('спутник',satX-20,axisY-34);
+
+    return {satX,earthX,axisY};
+  }
+
+  function arrow(ctx,x1,y1,x2,y2,color,txt){
+    ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2.6;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    const ang=Math.atan2(y2-y1,x2-x1),hl=9;
+    ctx.beginPath();ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-hl*Math.cos(ang-0.45),y2-hl*Math.sin(ang-0.45));
+    ctx.lineTo(x2-hl*Math.cos(ang+0.45),y2-hl*Math.sin(ang+0.45));
+    ctx.closePath();ctx.fill();
+    ctx.font=ARROW_FONT;ctx.fillText(txt,(x1+x2)/2-4,y1-7);
+  }
+
+  function plot(id,arr,color,label){
+    const c=$(id),ctx=c.getContext('2d'),W=c._lw,Hh=c._lh;
+    ctx.clearRect(0,0,W,Hh);
+    if(arr.length<2)return;
+    let mn=Math.min(...arr),mx=Math.max(...arr);
+    if(mx-mn<1e-9){mx+=1;mn-=1;}
+    const pd=(mx-mn)*0.15;mn-=pd;mx+=pd;
+    const X=i=>44+i/(HN-1)*(W-56);
+    const Y=v=>Hh-18-(v-mn)/(mx-mn)*(Hh-30);
+    ctx.fillStyle=color;ctx.font=PLOT_LABEL_FONT;
+    const tw=ctx.measureText(label).width;ctx.fillText(label,(W-tw)/2,15);
+    if(mn<0&&mx>0){ctx.strokeStyle=PLOT_ZERO;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(44,Y(0));ctx.lineTo(W-12,Y(0));ctx.stroke();}
+    ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();
+    arr.forEach((v,i)=>{const xx=X(i+(HN-arr.length)),yy=Y(v);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});
+    ctx.stroke();
+    const li=arr.length-1,lx=X(li+(HN-arr.length)),ly=Y(arr[li]);
+    ctx.fillStyle=color;ctx.beginPath();ctx.arc(lx,ly,3.5,0,TAU);ctx.fill();
+    ctx.fillStyle=PLOT_VAL;ctx.font=PLOT_VAL_FONT;
+    ctx.fillText(arr[li].toFixed(3),W-78,14);
+  }
+
+  function refLines(id,arr,color,refs){
+    const c=$(id),ctx=c.getContext('2d'),W=c._lw,Hh=c._lh;
+    if(arr.length<2)return;
+    let mn=Math.min(...arr),mx=Math.max(...arr);
+    if(mx-mn<1e-9){mx+=1;mn-=1;}
+    const pd=(mx-mn)*0.15;mn-=pd;mx+=pd;
+    const Y=v=>Hh-18-(v-mn)/(mx-mn)*(Hh-30);
+    refs.forEach(([val,label])=>{
+      if(val<mn||val>mx)return;
+      const y=Y(val);
+      ctx.strokeStyle=color;ctx.globalAlpha=0.45;ctx.lineWidth=0.7;ctx.setLineDash([5,5]);
+      ctx.beginPath();ctx.moveTo(44,y);ctx.lineTo(W-12,y);ctx.stroke();ctx.setLineDash([]);
+      ctx.globalAlpha=0.85;ctx.fillStyle=color;ctx.font=REF_FONT;
+      ctx.fillText(label,3,y-4);
+      ctx.globalAlpha=1;
+    });
+  }
+
+  function renderAt(){
+    const s=state(M);
+    drawScene(s);
+    const W=windowSeries(M);
+    plot('pR',W.r,CL_PLOT_R,'r   расстояние');
+    plot('pV',W.v,CL_PLOT_V,'Vᵣ   радиальная скорость');
+    plot('pA',W.a,CL_PLOT_A,'a   радиальное ускорение');
+    const rpVal=rp(),raVal=ra(),r0Val=s.h*s.h/mu;
+    refLines('pR',W.r,CL_PLOT_R,[[rpVal,`rₚ ${rpVal.toFixed(3)}`],[r0Val,`r₀ ${r0Val.toFixed(3)}`],[raVal,`rₐ ${raVal.toFixed(3)}`]]);
+    const V0=s.h?mu*e/s.h:0;
+    refLines('pV',W.v,CL_PLOT_V,[[V0,`Vᵣ(r₀) ${V0.toFixed(3)}`]]);
+    refLines('pA',W.a,CL_PLOT_A,[[0,'0']]);
+  }
+
+  let last=performance.now();
+  function frame(now){
+    const dt=Math.min((now-last)/1000,0.05);last=now;
+    if(playing&&!scrubbing){M+=n*dt*speed*0.65;syncScrubFromM();renderAt();}
+    requestAnimationFrame(frame);
+  }
+})();
+</script>
+</body>
+</html>
