@@ -3,6 +3,16 @@
     "topics": [
       "Космология"
     ],
+    "title": "Центробежная сила",
+    "path": "cosmology/centrifugal-force",
+    "interactive": true,
+    "gifs": [],
+    "preview": null
+  },
+  {
+    "topics": [
+      "Космология"
+    ],
     "title": "Орбита спутника",
     "path": "cosmology/satellite-orbit",
     "interactive": true,
