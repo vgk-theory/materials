@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "GM": 1.0,
+    "r0": 1.0,
+    "perturbation": 0.01,
+    "n_periods": 60,
+    "integrator": "DOP853",
+    "rtol": 1e-12,
+    "atol": 1e-14,
+    "k1": 0.5,
+    "k2": 1.5,
+    "note_B": "force computed as split k1/k2 terms"
+  },
+  "cases": {
+    "A": {
+      "r_min": 1.01,
+      "r_max": 1.0304040403259014,
+      "rel_amplitude": 0.019999546803731272,
+      "amp_first10T": 0.02040404023324105,
+      "amp_last10T": 0.020404032431875052,
+      "secular_drift_rel": 3.823441783329292e-07,
+      "radial_period": 6.474650150610791,
+      "orbital_period_actual": 6.474543262381849,
+      "kappa_over_omega": 0.9999834912734348,
+      "n_perihelia": 58
+    },
+    "B": {
+      "max_rel_deviation_r_AB": 3.086420008457935e-14,
+      "max_rel_deviation_xy_AB": 1.7601225349969751e-12,
+      "rel_amplitude": 0.019999546803732428
+    },
+    "C": {
+      "r_final": 648.6079083788278,
+      "monotone_increase_after_quarter_period": true,
+      "total_energy": 1.49009900990099
+    },
+    "D": {
+      "r_initial": 1.01,
+      "r_last_sample": 0.16753238049578104,
+      "t_last_sample": 1.0933289098947427,
+      "r_event": 0.09999999999999966,
+      "t_event": 1.1120481142980314,
+      "monotone_decrease": true,
+      "terminated_at_inner_boundary": true
+    }
+  },
+  "pass": {
+    "A_bounded": true,
+    "A_no_drift": true,
+    "A_kappa_eq_omega": true,
+    "B_identity_AB": true,
+    "C_escape": true,
+    "D_monotonic_departure": true
+  },
+  "verdict": "PASS"
+}

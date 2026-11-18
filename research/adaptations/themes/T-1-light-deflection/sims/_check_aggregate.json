@@ -1,0 +1,68 @@
+{
+  "theme": "T-1",
+  "constants": {
+    "c_m_s": 299792458.0,
+    "GM_sun_m3_s2": 1.3271244e+20,
+    "R_sun_m": 695700000.0
+  },
+  "criteria": {
+    "K1_sigma": 3.0,
+    "K2_sigma": 5.0,
+    "free_parameters": 0
+  },
+  "theta_full_arcsec": 1.7512,
+  "theta_half_arcsec": 0.8756,
+  "facts": {
+    "OBS-2 R-1": {
+      "ratio": 0.999915,
+      "sigma": 0.000225,
+      "z_full": -0.377777778,
+      "z_half": 2221.84444
+    },
+    "OBS-2 R-4": {
+      "ratio": 0.99996,
+      "sigma": 6e-05,
+      "z_full": -0.666666667,
+      "z_half": 8332.66667
+    },
+    "OBS-3": {
+      "ratio": 0.9985,
+      "sigma": 0.0015,
+      "z_full": -1.0,
+      "z_half": 332.333333
+    },
+    "OBS-4": {
+      "ratio": 1.0000105,
+      "sigma": 1.15e-05,
+      "z_full": 0.913043478,
+      "z_half": 43479.1739
+    },
+    "OBS-10": {
+      "ratio": 0.985,
+      "sigma": 0.045,
+      "z_full": -0.333333333,
+      "z_half": 10.7777778
+    },
+    "OBS-1 Собрал": {
+      "arcsec": 1.98,
+      "sigma_arcsec": 0.177909563,
+      "z_full": 1.28610105,
+      "z_half": 6.20767552
+    },
+    "OBS-1 Принсипи": {
+      "arcsec": 1.61,
+      "sigma_arcsec": 0.444773907,
+      "z_full": -0.317442915,
+      "z_half": 1.65118688
+    }
+  },
+  "K1_aggregate": {
+    "max_abs_z": 1.286,
+    "verdict": "PASS"
+  },
+  "K2_half_deflection": {
+    "max_abs_z": 43479.2,
+    "verdict": "REJECTED"
+  },
+  "note": "OBS-11 в проверку не входит: карта массы построена по самому закону Ag-6."
+}

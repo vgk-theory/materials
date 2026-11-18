@@ -1,0 +1,51 @@
+{
+  "constants": {
+    "R_earth_km": 6378.137,
+    "GM_rel_uncertainty": 2e-09,
+    "eps_obs": 1e-07,
+    "threshold": 100.0
+  },
+  "orbits": {
+    "ISZ_700km": {
+      "r_km": 7078.137,
+      "x": 0.8119882754039686,
+      "delta_exact": 0.3950861834138073,
+      "delta_series_x_over_4": 0.20299706885099214,
+      "delta_over_eps_obs": 3950861.834138073,
+      "delta_over_gm_unc": 197543091.70690364
+    },
+    "LAGEOS": {
+      "r_km": 12270.0,
+      "x": 0.2702082230947992,
+      "delta_exact": 0.07858662359861968,
+      "delta_series_x_over_4": 0.0675520557736998,
+      "delta_over_eps_obs": 785866.2359861968,
+      "delta_over_gm_unc": 39293311.799309835
+    },
+    "GPS": {
+      "r_km": 26560.0,
+      "x": 0.05766755594115306,
+      "delta_exact": 0.0148481970796146,
+      "delta_series_x_over_4": 0.014416888985288265,
+      "delta_over_eps_obs": 148481.970796146,
+      "delta_over_gm_unc": 7424098.539807299
+    },
+    "Moon": {
+      "r_km": 384400.0,
+      "x": 0.0002753093296658184,
+      "delta_exact": 6.883680861680119e-05,
+      "delta_series_x_over_4": 6.88273324164546e-05,
+      "delta_over_eps_obs": 688.3680861680119,
+      "delta_over_gm_unc": 34418.4043084006
+    }
+  },
+  "delta_min": 6.883680861680119e-05,
+  "delta_max": 0.3950861834138073,
+  "orders_min_vs_eps_obs": 2.8378207275439458,
+  "orders_span_vs_gm_unc": 8.29566184654072,
+  "eps_obs_star_reversal_point": 6.88368086168012e-07,
+  "threshold_star_reversal_point": 688.3680861680119,
+  "note": "статус CONTRADICTS прочтения (B) не зависит от порога: достаточно delta/eps_obs > 1; порог задаёт запас",
+  "criterion": "min_delta / eps_obs >= threshold",
+  "PASS": true
+}
